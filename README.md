@@ -1,72 +1,83 @@
-<div align="center">
+# TickWeave
 
-# Async 1.20.1 - Minecraft Entity Multi-Threading Mod ⚙️
+[English](README.md) | [简体中文](README.zh-CN.md)
 
-[![Discord](https://img.shields.io/discord/YOUR_DISCORD_ID?style=for-the-badge&logo=discord&label=Discord)](https://discord.com/invite/scvCQ2qKS3)
-[![GitHub Issues](https://img.shields.io/github/issues/AxalotLDev/Async?style=for-the-badge)](https://github.com/Bliss-tbh/Async-1.20.1/issues)
-</div>
+TickWeave spreads Minecraft entity ticking across CPU workers to reduce server tick time in entity-heavy worlds. Built for **Minecraft 1.20.1**, with **Forge and Fabric** editions. It works on dedicated servers and the integrated server in single-player.
 
+## Installation
 
+Use Java 17 and choose the file matching your loader:
 
-**Async** is a Fabric mod designed to improve entity performance by processing them in parallel using multiple CPU cores and threads.
+| Loader | Runtime | Release file |
+| --- | --- | --- |
+| Forge | Forge 47.x; built against 47.4.16 | `tickweave-forge-1.20.1-2.1.1-all.jar` |
+| Fabric | Fabric Loader 0.18.2+ and Fabric API for 1.20.1 | `tickweave-fabric-1.20.1-2.1.1.jar` |
 
+Place the JAR in `mods`. Dedicated-server players do not need TickWeave on their clients. For single-player, install it on the client. Back up your world before changing tick-processing mods. Remove older TickWeave, HariMultiThread or Async JARs before installing; these implementations must not run together.
 
-## Important❗
-**Async** is currently in alpha testing and is experimental. Its use may lead to incorrect entity behavior and crashes. It may be even more unstable on 1.20.1!
+## Features
 
+- Adaptive task sizes based on measured entity cost, with spatial grouping and main-thread assistance.
+- A bounded worker pool and completion barriers between processing phases.
+- Worker-local chunk lookup caching; missing chunks are requested through the server executor.
+- Optional parallel natural spawning, configurable synchronous entity types and a failure circuit breaker.
+- Live statistics for server tick time, worker activity and entity costs.
+- Experimental random-tick batching, disabled by default. Block and fluid callbacks remain on the server thread.
 
+Players, passenger/vehicle groups and selected sensitive entity types stay synchronous. Modded entities require an explicit compatibility annotation to tick asynchronously. Parallel execution changes entity ordering: results depend on the world, CPU and modpack, and speedups are not guaranteed. GPU computation is not used by the entity scheduler.
 
-### 💡 Key Benefits:
-- ⚡ **Improved TPS**: Maintains stable tick times even with a large number of entities.
-- 🚀 **Multithreading**: Utilizes multiple CPU cores for parallel entity processing.
-- 🎲 **Async Random Ticks** (Experimental): Processes random ticks asynchronously for better performance.
+## Configuration
 
-### 📊 Performance Comparison (9000 Villagers) (Not From 1.20.1)
-| Configuration               | TPS  | MSPT   |
-|-----------------------------|------|--------|
-| **Lithium + Async**         | 20   | 41.8   |
-| **Lithium (without Async)** | 4.4  | 225.4  |
-| **Purpur**                  | 5.72 | 176.18 |
+The file is `config/tickweave.toml`. Forge stores these keys under `["Async Config"]`; Fabric uses top-level keys. When migrating from `harimt.toml`, copy values into the configuration generated for the same loader. Configuration files are not interchangeable between loaders.
 
-### 🛠️ Test Configuration
-- **Processor**: AMD Ryzen 9 7950X3D
-- **RAM**: 64 GB (16 GB allocated to the server)
-- **Minecraft Version**: 1.21.4
-- **Number of Entities**: 9000
-- **Entity Type**: Villagers
+| Key | Default | Purpose |
+| --- | --- | --- |
+| `disabled` | `false` | Disable asynchronous processing |
+| `paraMax` | `-1` | Worker count; automatic at -1, capped by available processors; restart after changing |
+| `enableAsyncSpawn` | `true` | Parallel natural spawning |
+| `enableAsyncRandomTicks` | `false` | Experimental random-tick preparation |
+| `enableAffinityRouting` | `true` | Group nearby entities in batches |
+| `enableCircuitBreaker` | `true` | Return repeatedly failing entity types to synchronous ticking |
+| `entitiesPerWorker` | `25` | Maximum entities per task; Forge accepts 5–200 |
+| `staleTaskTimeoutMs` | `200` | Slow-batch warning threshold in milliseconds; does not cancel running ticks |
+| `synchronizedEntities` | Built-in list | Entity IDs or `namespace:*` patterns that must stay synchronous |
 
-<details>
-<summary>Mod List</summary>
-Concurrent Chunk Management Engine, Fabric API, FerriteCore, Lithium, ScalableLux, ServerCore, StackDeobfuscator, TT20 (TPS Fixer), Tectonic, Very Many Players, Fabric Carpet.
-</details>
+Administrative commands:
 
-## ⚠️ Incompatible Mods (1.20.1)
-- ⚠️ If you find an incompatible mod for 1.20.1 report it to ME not AxolotL. 
+```text
+/tickweave stats
+/tickweave stats entity 10 100
+/tickweave config toggle
+/tickweave config reload
+/tickweave config setAsyncEntitySpawn false
+/tickweave config setAsyncRandomTicks false
+/tickweave config synchronizedEntities add minecraft:zombie
+/tickweave config synchronizedEntities add examplemod:*
+/tickweave config synchronizedEntities remove minecraft:zombie
+```
 
-*If you encounter issues with other mods, please report them on my [GitHub](https://github.com/Bliss-tbh/Async-1.20.1/issues).*
+`stats entity 10 100` samples 100 server ticks and lists the ten most expensive entity types. Its entity-time totals overlap across threads and are not wall-clock savings. `Completed Worker Entity Ticks` confirms actual worker execution; thread-pool startup alone does not.
 
-## 🔧 Commands
-- `/async config toggle` — Enables or disables the mod in-game (no server restart required). Use this command to instantly see how Async improves your server.
-- `/async config setAsyncEntitySpawn` — Enables or disables parallel mob spawn processing (disabled by default). **Warning: Not compatible with Carpet mod lagFreeSpawning rule.**
-- `/async config setAsyncRandomTicks` — Enables or disables async random ticks processing (experimental feature).
-- `/async config synchronizedEntities add` — Adds selected entity to synchronized processing.
-- `/async config synchronizedEntities remove` — Removes selected entity from synchronized processing.
-- `/async stats` — Displays the number of threads in use.
-- `/async stats entity` — Shows the number of entities processed by Async in various worlds.
-- `/async stats entity [number]` — Shows the top [number] entity types by count in descending order. For example, `/async stats entity 10` displays the top 10 most numerous entity types.
+## Compatibility
 
-## 📥 Download
-The mod is available here at [Releases]()
+Do not combine with Moonrise or Cupboard. Carpet's `lagFreeSpawning` rule conflicts with parallel spawning; disable parallel spawning when using that rule. Existing compatibility hooks are conditional on the corresponding mods being installed. Version 2.1.1 updates the Forge SophisticatedCore hooks for `SlotValueMap` (Core 1.3.21.1676 / Backpacks 3.24.35.1675).
 
-## 🔄 Minecraft Version Support
-Full support is provided for 1.20.1 sometimes :P
+Test a copy of your modpack and world. For problematic entities, add their ID or namespace to `synchronizedEntities`. Report the loader, mod versions, `latest.log`, crash report and reproduction steps through [GitHub Issues](https://github.com/kltyton/HariMultiThread/issues).
 
-## 📭 Feedback
-Use original Async's tracker for **FEEDBACK ONLY** (if your coming from 1.20.1) available on GitHub. Changes made there might slowly drizzle down to this fork:
-[![Give feedback on GitHub](https://img.shields.io/badge/Report%20issues%20on-GitHub-lightgrey)](https://github.com/AxalotLDev/Async/issues)
+## Building
 
-You can also chat with me on their Discord:
-[![Chat with us on Discord](https://img.shields.io/badge/Chat%20with%20us%20on-Discord-blue)](https://discord.com/invite/scvCQ2qKS3)
+Use the included Gradle wrapper with Java 17:
 
-## 🙌 Acknowledgements
-This mod is based on code from [MCMTFabric](https://modrinth.com/mod/mcmtfabric), which in turn was based on [JMT-MCMT](https://github.com/jediminer543/JMT-MCMT). Huge thanks to Grider and jediminer543 for their invaluable contributions!
+```sh
+./gradlew :forge:build :fabric:build
+./gradlew :forge:runClient
+./gradlew :fabric:runClient
+```
+
+On Windows use `gradlew.bat`. Release files are in `forge/build/libs` (use the `-all.jar`) and `fabric/build/libs` (use the remapped JAR, not sources). The existing `common/libs/Harium-1.0.0.jar` is a compile-only integration dependency, not bundled into the releases.
+
+## Credits and license
+
+Derived from HariMultiThread and Async. Thanks to HariMT, Axalotl, Alchemy, Bliss, FurryMileon, Grider and jediminer543 for their upstream work; PaperMC / Folia informed thread-ownership design research. TickWeave is not a Folia server and does not imply upstream endorsement.
+
+Licensed under [GPL-3.0](LICENSE). See [third-party notices](THIRD_PARTY_NOTICES.md) and the [changelog](CHANGELOG.md).

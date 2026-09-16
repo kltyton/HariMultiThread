@@ -1,51 +1,29 @@
-name: Async Build Script
+name: Build TickWeave
 on:
-  push: { }
-  pull_request: { }
+  push: {}
+  pull_request: {}
 jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
         with:
-          fetch-depth: 0
-          submodules: true
-
-      - name: Set up JDK 22
-        uses: actions/setup-java@v2
-        with:
-          distribution: 'zulu'
-          java-version: 22
-          java-package: jdk
-
-      - name: Install required dependencies
-        run: sudo apt update && sudo apt install libtinfo5
-
-      - name: Grant execute permission to gradlew
-        run: chmod +x ./gradlew
-
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            ./.gradle/loom-cache
-          key: ${{ runner.os }}-gradle4-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle4-
-
-      - name: Build Async
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Build Forge and Fabric
         run: |
-          ./gradlew clean processIncludeJars build --stacktrace
-
-      - name: Prepare artifact directory
+          chmod +x gradlew
+          ./gradlew :forge:build :fabric:build --stacktrace
+      - name: Prepare release artifacts
         run: |
           mkdir jars
-          cp forge/build/libs/*.jar jars/ || true
-          cp fabric/build/libs/*.jar jars/ || true
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+          cp forge/build/libs/*-all.jar jars/
+          find fabric/build/libs -maxdepth 1 -name '*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' -exec cp {} jars/ \;
+      - uses: actions/upload-artifact@v4
         with:
-          name: async-artifacts
+          name: tickweave-1.20.1
           path: jars/*.jar
+          if-no-files-found: error
