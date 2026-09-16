@@ -1,5 +1,7 @@
 # TickWeave
 
+<p align="center"><img src="common/src/main/resources/tickweave.png" alt="TickWeave" width="160"></p>
+
 [English](README.md) | [简体中文](README.zh-CN.md)
 
 TickWeave spreads Minecraft entity ticking across CPU workers to reduce server tick time in entity-heavy worlds. Built for **Minecraft 1.20.1**, with **Forge and Fabric** editions. It works on dedicated servers and the integrated server in single-player.

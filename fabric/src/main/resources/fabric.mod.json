@@ -13,7 +13,7 @@
     "homepage": "https://github.com/kltyton/HariMultiThread"
   },
   "license": "${license}",
-  "icon": "async/icon.png",
+  "icon": "tickweave.png",
   "environment": "*",
   "entrypoints": {
     "main": [

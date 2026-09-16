@@ -7,7 +7,7 @@ modId = "${mod_id}"
 version = "${version}"
 displayName = "${mod_name}"
 displayURL = "https://github.com/kltyton/HariMultiThread"
-logoFile="async/icon.png"
+logoFile="tickweave.png"
 authors = "${mod_authors}"
 description = '''${description}'''
 

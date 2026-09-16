@@ -1,5 +1,7 @@
 # TickWeave
 
+<p align="center"><img src="common/src/main/resources/tickweave.png" alt="TickWeave" width="160"></p>
+
 [English](README.md) | [简体中文](README.zh-CN.md)
 
 TickWeave 将 Minecraft 的实体 tick 分配给多个 CPU 工作线程，旨在降低实体密集场景的服务器 tick 耗时。面向 **Minecraft 1.20.1**，提供 **Forge 与 Fabric** 两个版本，支持专用服务器和单人游戏的内置服务器。
