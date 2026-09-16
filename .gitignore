@@ -24,3 +24,9 @@
 
 # Allow libs
 !common/libs/*.jar
+
+**/*.launch
+*.log
+*.hprof
+
+/fabric/runs/
