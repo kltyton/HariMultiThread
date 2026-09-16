@@ -1,6 +1,5 @@
 package com.axalotl.async.fabric.config;
 
-import com.electronwill.nightconfig.core.CommentedConfig;
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import net.fabricmc.loader.api.FabricLoader;
 
@@ -11,11 +10,10 @@ import java.util.function.Supplier;
 import java.util.ArrayList;
 
 import static com.axalotl.async.common.config.AsyncConfig.*;
-import static com.mojang.text2speech.Narrator.LOGGER;
 
 public class AsyncConfigFabric {
     private static final Supplier<CommentedFileConfig> configSupplier = () -> CommentedFileConfig
-            .builder(FabricLoader.getInstance().getConfigDir().resolve("harimt.toml"))
+            .builder(FabricLoader.getInstance().getConfigDir().resolve("tickweave.toml"))
             .preserveInsertionOrder()
             .sync()
             .build();
@@ -23,7 +21,7 @@ public class AsyncConfigFabric {
     private static CommentedFileConfig CONFIG;
 
     public static void init() {
-        LOGGER.info("Initializing Async Config...");
+        LOGGER.info("Initializing TickWeave Config...");
         CONFIG = configSupplier.get();
         try {
             if (!CONFIG.getFile().exists()) {
@@ -35,10 +33,8 @@ public class AsyncConfigFabric {
                 loadConfigValues();
                 LOGGER.info("Configuration successfully loaded.");
             }
-        } catch (Throwable t) {
-            LOGGER.error("Error loading configuration, resetting to default values.", t);
-            setDefaultValues();
-            saveConfig();
+        } catch (RuntimeException failure) {
+            throw new IllegalStateException("Cannot load tickweave.toml; the existing file has been preserved", failure);
         }
     }
 
@@ -49,10 +45,10 @@ public class AsyncConfigFabric {
 
         CONFIG.set("paraMax", maxThreads.getValue());
         CONFIG.setComment("paraMax",
-                "Maximum number of threads to use for parallel processing. Set to -1 to use default value. Note: If 'virtualThreads' is enabled, this setting will be ignored.");
+                "Maximum worker threads. -1 = automatic platform-aware selection.");
 
         CONFIG.set("synchronizedEntities", new ArrayList<>(synchronizedEntities.getValue()));
-        CONFIG.setComment("synchronizedEntities", "List of entity class for sync processing.");
+        CONFIG.setComment("synchronizedEntities", "Entity IDs or namespace:* patterns that must tick on the server thread.");
 
         CONFIG.set("enableAsyncSpawn", enableAsyncSpawn.getValue());
         CONFIG.setComment("enableAsyncSpawn",
@@ -61,6 +57,15 @@ public class AsyncConfigFabric {
         CONFIG.set("enableAsyncRandomTicks", enableAsyncRandomTicks.getValue());
         CONFIG.setComment("enableAsyncRandomTicks",
                 "Experimental! Enables async random ticks.");
+
+        CONFIG.set("enableAffinityRouting", enableAffinityRouting.getValue());
+        CONFIG.setComment("enableAffinityRouting", "Group nearby entities into spatial batches for CPU cache locality.");
+        CONFIG.set("enableCircuitBreaker", enableCircuitBreaker.getValue());
+        CONFIG.setComment("enableCircuitBreaker", "Move repeatedly failing entity types back to synchronous ticking.");
+        CONFIG.set("entitiesPerWorker", entitiesPerWorker.getValue());
+        CONFIG.setComment("entitiesPerWorker", "Maximum entities per task; actual batch size adapts to measured cost. Default: 25.");
+        CONFIG.set("staleTaskTimeoutMs", staleTaskTimeoutMs.getValue());
+        CONFIG.setComment("staleTaskTimeoutMs", "Warn about slow batches after this many milliseconds; never cancels a running tick.");
 
         CONFIG.save();
         onConfigLoaded();
@@ -76,10 +81,8 @@ public class AsyncConfigFabric {
             CONFIG.load();
             loadConfigValues();
             LOGGER.info("Configuration reloaded successfully.");
-        } catch (Throwable t) {
-            LOGGER.error("Error reloading configuration, resetting to default values.", t);
-            setDefaultValues();
-            saveConfig();
+        } catch (RuntimeException failure) {
+            throw new IllegalStateException("Cannot reload tickweave.toml; the existing file has been preserved", failure);
         }
     }
 
@@ -88,6 +91,10 @@ public class AsyncConfigFabric {
         maxThreads.setValue(CONFIG.getOrElse("paraMax", maxThreads.getValue()));
         enableAsyncSpawn.setValue(CONFIG.getOrElse("enableAsyncSpawn", enableAsyncSpawn.getValue()));
         enableAsyncRandomTicks.setValue(CONFIG.getOrElse("enableAsyncRandomTicks", enableAsyncRandomTicks.getValue()));
+        enableAffinityRouting.setValue(CONFIG.getOrElse("enableAffinityRouting", true));
+        enableCircuitBreaker.setValue(CONFIG.getOrElse("enableCircuitBreaker", true));
+        entitiesPerWorker.setValue(CONFIG.getOrElse("entitiesPerWorker", 25));
+        staleTaskTimeoutMs.setValue(CONFIG.getOrElse("staleTaskTimeoutMs", 200));
 
         Set<String> entities = new HashSet<>();
         CONFIG.<List<String>>getOptional("synchronizedEntities").ifPresentOrElse(ids -> {
@@ -96,39 +103,20 @@ public class AsyncConfigFabric {
             }
         }, () -> entities.addAll(getDefaultSynchronizedEntities()));
 
-        synchronizedEntities.setValue(entities.isEmpty()
-                ? getDefaultSynchronizedEntities()
-                : entities);
+        synchronizedEntities.setValue(entities);
 
-        Set<String> processedKeys = new HashSet<>(List.of(
-                "disabled",
-                "paraMax",
-                "synchronizedEntities",
-                "enableAsyncSpawn",
-                "enableAsyncRandomTicks"));
-
-        Set<String> keysToRemove = new HashSet<>();
-        for (CommentedConfig.Entry entry : CONFIG.entrySet()) {
-            String key = entry.getKey();
-            if (!processedKeys.contains(key)) {
-                keysToRemove.add(key);
-            }
-        }
-
-        for (String key : keysToRemove) {
-            LOGGER.warn("Removing unused configuration key: {}", key);
-            CONFIG.remove(key);
-        }
-
-        CONFIG.save();
         onConfigLoaded();
     }
 
     private static void setDefaultValues() {
         disabled.setValue(false);
         maxThreads.setValue(-1);
-        enableAsyncSpawn.setValue(false);
+        enableAsyncSpawn.setValue(true);
         enableAsyncRandomTicks.setValue(false);
+        enableAffinityRouting.setValue(true);
+        enableCircuitBreaker.setValue(true);
+        entitiesPerWorker.setValue(25);
+        staleTaskTimeoutMs.setValue(200);
         synchronizedEntities.setValue(getDefaultSynchronizedEntities());
     }
 }

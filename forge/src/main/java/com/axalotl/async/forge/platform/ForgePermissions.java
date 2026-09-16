@@ -10,7 +10,7 @@ import java.util.Map;
 
 public class ForgePermissions {
     private static final Map<String, PermissionNode<Boolean>> PERMISSIONS = ForgePermissions.build(
-            "command.async",
+            "command.tickweave",
             "command.config",
             "command.reload",
             "command.statistics");

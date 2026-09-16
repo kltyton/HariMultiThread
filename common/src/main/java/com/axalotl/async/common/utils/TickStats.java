@@ -13,10 +13,16 @@ public class TickStats {
     public static final Map<EntityType<?>, LongAdder> ASYNC_TICK_TIME_NS = new ConcurrentHashMap<>();
     public static final Map<EntityType<?>, LongAdder> ASYNC_TICK_COUNT = new ConcurrentHashMap<>();
     public static final AtomicInteger RECORDING_TICKS_LEFT = new AtomicInteger(0);
+    private static Runnable recordingFinished;
 
     public static void startRecording(int ticks) {
         clean();
         RECORDING_TICKS_LEFT.set(ticks);
+    }
+
+    public static void startRecording(int ticks, Runnable finished) {
+        startRecording(ticks);
+        recordingFinished = finished;
     }
 
     public static void clean() {
@@ -24,6 +30,14 @@ public class TickStats {
         TICK_COUNT.clear();
         ASYNC_TICK_TIME_NS.clear();
         ASYNC_TICK_COUNT.clear();
+    }
+
+    public static void onServerTick() {
+        if (RECORDING_TICKS_LEFT.getAndUpdate(ticks -> Math.max(0, ticks - 1)) == 1) {
+            Runnable finished = recordingFinished;
+            recordingFinished = null;
+            if (finished != null) finished.run();
+        }
     }
 
     public static boolean isRecording() {
@@ -43,9 +57,7 @@ public class TickStats {
 
         LongAdder asyncTime = ASYNC_TICK_TIME_NS.get(type);
         if (asyncTime != null) {
-            int poolSize = com.axalotl.async.common.ParallelProcessor.getPoolSize();
-            double rawAsyncMs = asyncTime.sum() / 1_000_000.0;
-            asyncMs = poolSize > 0 ? rawAsyncMs / poolSize : rawAsyncMs;
+            asyncMs = asyncTime.sum() / 1_000_000.0;
         }
 
         return (syncMs + asyncMs) / recordedTicks;
@@ -57,5 +69,6 @@ public class TickStats {
         ASYNC_TICK_TIME_NS.clear();
         ASYNC_TICK_COUNT.clear();
         RECORDING_TICKS_LEFT.set(0);
+        recordingFinished = null;
     }
 }

@@ -12,8 +12,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public abstract class AsyncCommon {
-    public static final String MODID = "harimt";
-    private static final Logger LOGGER = LogManager.getLogger((String)"HariMultiThread");
+    public static final String MODID = "tickweave";
+    private static final Logger LOGGER = LogManager.getLogger("TickWeave");
     public static boolean LITHIUM = PlatformUtils.isModLoaded("lithium") || PlatformUtils.isModLoaded("harium");
     public static boolean HARIPLAYER = PlatformUtils.isModLoaded("hariplayer") || PlatformUtils.isModLoaded("vmp");
     public static boolean HARICHUNK = PlatformUtils.isModLoaded("harichunk") || PlatformUtils.isModLoaded("c2me");
@@ -24,7 +24,7 @@ public abstract class AsyncCommon {
     }
 
     private static void logCompatibilityStatus() {
-        LOGGER.info("=== HariMultiThread Mod Compatibility ===");
+        LOGGER.info("=== TickWeave Mod Compatibility ===");
         if (LITHIUM) {
             LOGGER.info("Detected: Harium/Lithium - Adjusted entity AI optimizations");
             LOGGER.info("  -> Enabled RadiumServerLevel compat mixin");

@@ -10,10 +10,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -92,64 +90,47 @@ public abstract class ServerLevelMixin
         this.players = new CopyOnWriteArrayList<>();
     }
 
+    @Shadow
+    protected abstract boolean shouldDiscardEntity(Entity entity);
+
     @Redirect(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/entity/EntityTickList;forEach(Ljava/util/function/Consumer;)V"))
     private void overwriteEntityTicking(EntityTickList entityList, Consumer<Entity> action) {
-        ProfilerFiller profiler = this.getProfiler();
+        if (AsyncConfig.disabled.getValue()) {
+            entityList.forEach(action);
+            return;
+        }
+        boolean asyncDespawn = AsyncConfig.enableAsyncSpawn.getValue();
         List<Entity> toTick = new ArrayList<>();
-        List<Entity> toDespawnCheck = new ArrayList<>();
-
-        this.entityTickList.forEach(entity -> {
-            if (entity == null || entity.isRemoved())
-                return;
-
-            if (!AsyncConfig.disabled.getValue() && AsyncConfig.enableAsyncSpawn.getValue()) {
-                toDespawnCheck.add(entity);
-            } else {
-                profiler.push("checkDespawn");
-                entity.checkDespawn();
-                profiler.pop();
-            }
-
-            if (!this.chunkSource.chunkMap.getDistanceManager().inEntityTickingRange(entity.chunkPosition().toLong())) {
+        List<Entity> despawnOnly = new ArrayList<>();
+        entityList.forEach(entity -> {
+            if (entity.isRemoved()) return;
+            if (shouldDiscardEntity(entity)) {
+                entity.discard();
                 return;
             }
-
+            if (!asyncDespawn) entity.checkDespawn();
+            if (entity.isRemoved()) return;
+            if (!(entity instanceof ServerPlayer)
+                    && !chunkSource.chunkMap.getDistanceManager().inEntityTickingRange(entity.chunkPosition().toLong())) {
+                if (asyncDespawn) despawnOnly.add(entity);
+                return;
+            }
             Entity vehicle = entity.getVehicle();
             if (vehicle != null) {
-                if (!vehicle.isRemoved() && vehicle.hasPassenger(entity))
+                if (!vehicle.isRemoved() && vehicle.hasPassenger(entity)) {
+                    if (asyncDespawn) despawnOnly.add(entity);
                     return;
+                }
                 entity.stopRiding();
             }
-
-            toTick.add(entity);
+            if (!(entity instanceof net.minecraft.world.entity.boss.EnderDragonPart)) toTick.add(entity);
         });
-
-        if (!toDespawnCheck.isEmpty()) {
-            int poolSize = ParallelProcessor.getPoolSize();
-            if (poolSize <= 0)
-                poolSize = 1;
-            int chunkSize = Math.max(1, toDespawnCheck.size() / poolSize);
-            List<Callable<Void>> despawnTasks = new ArrayList<>();
-            for (int i = 0; i < toDespawnCheck.size(); i += chunkSize) {
-                List<Entity> chunk = toDespawnCheck.subList(i, Math.min(i + chunkSize, toDespawnCheck.size()));
-                despawnTasks.add(() -> {
-                    for (Entity e : chunk)
-                        e.checkDespawn();
-                    return null;
-                });
-            }
-            try {
-                if (ParallelProcessor.tickPool instanceof ThreadPoolExecutor) {
-                    ((ThreadPoolExecutor) ParallelProcessor.tickPool).invokeAll(despawnTasks);
-                }
-            } catch (InterruptedException ignored) {
-            }
+        getProfiler().push("tick");
+        try {
+            ParallelProcessor.callEntityTickBatch(getLevel(), toTick, asyncDespawn ? despawnOnly : null);
+        } finally {
+            getProfiler().pop();
         }
-
-        profiler.push("tick");
-        ParallelProcessor.callEntityTickBatch(this.getLevel(), toTick);
-        ParallelProcessor.postEntityTick();
-        profiler.pop();
     }
 
     @Redirect(method = {

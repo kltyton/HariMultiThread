@@ -4,7 +4,7 @@ plugins {
 }
 
 base {
-    archivesName = "${mod_id}-${project.name}-${minecraft_version}"
+    archivesName = "${archive_name}-${project.name}-${minecraft_version}"
 }
 
 java {
@@ -58,7 +58,7 @@ jar {
                 'Implementation-Version': project.jar.archiveVersion,
                 'Implementation-Vendor' : mod_authors,
                 'Built-On-Minecraft'    : minecraft_version,
-                "MixinConfigs"          : forge_mixins.join(',')
+                "MixinConfigs"          : "${mod_id}.common.mixins.json,${mod_id}.${project.name}.mixins.json"
         ])
     }
 }
@@ -100,4 +100,8 @@ publishing {
             url System.getenv('local_maven_url')
         }
     }
+}
+
+tasks.withType(Jar).configureEach {
+    from(rootProject.file('THIRD_PARTY_NOTICES.md'))
 }

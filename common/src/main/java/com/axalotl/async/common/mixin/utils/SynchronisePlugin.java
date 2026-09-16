@@ -29,15 +29,22 @@ public class SynchronisePlugin implements IMixinConfigPlugin {
         mixin2MethodsExcludeMap.put("com.axalotl.async.common.mixin.utils.SyncAllMixin", "net.minecraft.world.level.chunk.ChunkStatus.isOrAfter");
         syncAllSet.add("com.axalotl.async.common.mixin.utils.FastUtilsMixin");
         syncAllSet.add("com.axalotl.async.common.mixin.utils.SyncAllMixin");
+        syncAllSet.add("com.axalotl.async.common.mixin.compat.SophisticatedCoreSlotValueMapMixin");
     }
 
     @Override
     public String getRefMapperConfig() {
-        return PlatformUtils.platformUsesRefmap() ? "async.refmap.json" : null;
+        return PlatformUtils.platformUsesRefmap() ? "tickweave.refmap.json" : null;
     }
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.endsWith(".compat.BlueprintEntityMixin")) {
+            return PlatformUtils.isModLoaded("blueprint");
+        }
+        if (mixinClassName.contains(".compat.SophisticatedCore")) {
+            return PlatformUtils.isModLoaded("sophisticatedcore");
+        }
         if (mixinClassName.endsWith(".lithium.RadiumServerLevel")) {
             return AsyncCommon.LITHIUM;
         }

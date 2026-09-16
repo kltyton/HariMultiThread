@@ -10,6 +10,8 @@
 package com.axalotl.async.common.config;
 
 import com.axalotl.async.common.commands.AsyncCommand;
+import com.axalotl.async.common.ParallelProcessor;
+import java.util.Locale;
 import com.axalotl.async.common.parallelised.utils.ModCompatibility;
 import com.axalotl.async.common.platform.PlatformUtils;
 import java.util.AbstractMap;
@@ -30,13 +32,12 @@ public class AsyncConfig {
     public static Map.Entry<String, Boolean> enableAsyncRandomTicks = new AbstractMap.SimpleEntry<String, Boolean>("enableAsyncRandomTicks", false);
     public static Map.Entry<String, Boolean> enableAffinityRouting = new AbstractMap.SimpleEntry<String, Boolean>("enableAffinityRouting", true);
     public static Map.Entry<String, Boolean> enableCircuitBreaker = new AbstractMap.SimpleEntry<String, Boolean>("enableCircuitBreaker", true);
-    public static Map.Entry<String, Boolean> enableGpuCollision = new AbstractMap.SimpleEntry<String, Boolean>("enableGpuCollision", true);
+    public static Map.Entry<String, Boolean> enableGpuCollision = new AbstractMap.SimpleEntry<String, Boolean>("enableGpuCollision", false);
     public static Map.Entry<String, Integer> entitiesPerWorker = new AbstractMap.SimpleEntry<String, Integer>("entitiesPerWorker", 25);
     public static Map.Entry<String, Integer> staleTaskTimeoutMs = new AbstractMap.SimpleEntry<String, Integer>("staleTaskTimeoutMs", 200);
     public static Map.Entry<String, Set<String>> synchronizedEntities = new AbstractMap.SimpleEntry<String, Set<String>>("synchronizedEntities", AsyncConfig.getDefaultSynchronizedEntities());
-    private static final Map<ResourceLocation, Boolean> syncCache = new ConcurrentHashMap<ResourceLocation, Boolean>();
-    private static final Set<String> exactEntities = new HashSet<String>();
-    private static final Set<String> namespaceWildcards = new HashSet<String>();
+    private record SyncRules(Set<String> exact, Set<String> namespaces, Map<ResourceLocation, Boolean> cache) {}
+    private static volatile SyncRules rules = new SyncRules(Set.of(), Set.of(), new ConcurrentHashMap<>());
 
     public static Set<String> getDefaultSynchronizedEntities() {
         HashSet<String> defaultSynchronizedEntities = new HashSet<String>(ModCompatibility.addUnsupportedMods());
@@ -45,10 +46,12 @@ public class AsyncConfig {
     }
 
     public static int getParallelism() {
-        if (maxThreads.getValue() <= 0) {
-            return Runtime.getRuntime().availableProcessors();
-        }
-        return Math.max(1, Math.min(Runtime.getRuntime().availableProcessors(), maxThreads.getValue()));
+        int cores = Runtime.getRuntime().availableProcessors();
+        if (maxThreads.getValue() > 0) return Math.max(1, Math.min(cores, maxThreads.getValue()));
+        boolean windows = System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("windows");
+        int threads = (int) (cores / (windows ? 1.6 : 1.3));
+        if (ParallelProcessor.getServer() != null && !ParallelProcessor.getServer().isDedicatedServer()) threads--;
+        return Math.max(1, threads);
     }
 
     public static boolean isNamespaceWildcard(String input) {
@@ -99,35 +102,19 @@ public class AsyncConfig {
     }
 
     private static void rebuildCaches() {
-        syncCache.clear();
-        exactEntities.clear();
-        namespaceWildcards.clear();
+        Set<String> exact = new HashSet<>();
+        Set<String> namespaces = new HashSet<>();
         for (String entry : synchronizedEntities.getValue()) {
-            if (AsyncConfig.isNamespaceWildcard(entry)) {
-                String ns = entry.substring(0, entry.indexOf(58));
-                namespaceWildcards.add(ns);
-                continue;
-            }
-            exactEntities.add(entry);
+            if (isNamespaceWildcard(entry)) namespaces.add(entry.substring(0, entry.indexOf(':')));
+            else exact.add(entry);
         }
+        rules = new SyncRules(Set.copyOf(exact), Set.copyOf(namespaces), new ConcurrentHashMap<>());
     }
 
     public static boolean isEntitySynchronized(ResourceLocation entityId) {
-        Boolean cached = syncCache.get(entityId);
-        if (cached != null) {
-            return cached;
-        }
-        String idString = entityId.toString();
-        if (exactEntities.contains(idString)) {
-            syncCache.put(entityId, true);
-            return true;
-        }
-        if (namespaceWildcards.contains(entityId.getNamespace())) {
-            syncCache.put(entityId, true);
-            return true;
-        }
-        syncCache.put(entityId, false);
-        return false;
+        SyncRules snapshot = rules;
+        return snapshot.cache().computeIfAbsent(entityId,
+                id -> snapshot.exact().contains(id.toString()) || snapshot.namespaces().contains(id.getNamespace()));
     }
 
     public static void onConfigLoaded() {
@@ -136,7 +123,7 @@ public class AsyncConfig {
     }
 
     public static void clearCaches() {
-        syncCache.clear();
+        rules = new SyncRules(Set.of(), Set.of(), new ConcurrentHashMap<>());
     }
 }
 

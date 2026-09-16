@@ -6,16 +6,16 @@ license = "${license}"
 modId = "${mod_id}"
 version = "${version}"
 displayName = "${mod_name}"
-displayURL = "https://discord.gg/atKQ3KrAK3"
+displayURL = "https://github.com/kltyton/HariMultiThread"
 logoFile="async/icon.png"
 authors = "${mod_authors}"
 description = '''${description}'''
 
 [[mixins]]
-config = "harimt.common.mixins.json"
+config = "tickweave.common.mixins.json"
 
 [[mixins]]
-config = "harimt.forge.mixins.json"
+config = "tickweave.forge.mixins.json"
 
 [[dependencies."${mod_id}"]]
 modId = "forge"

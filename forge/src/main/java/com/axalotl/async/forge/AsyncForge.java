@@ -24,20 +24,20 @@ import static com.axalotl.async.forge.config.AsyncConfigForge.loadConfig;
 
 @Mod(AsyncForge.MOD_ID)
 public class AsyncForge extends AsyncCommon {
-    public static final String MOD_ID = "harimt";
+    public static final String MOD_ID = "tickweave";
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public AsyncForge(FMLJavaModLoadingContext context) {
-        LOGGER.info("Initializing Async...");
+        LOGGER.info("Initializing TickWeave...");
         MinecraftForge.EVENT_BUS.register(this);
-        LOGGER.info("Initializing Async Config...");
-        context.registerConfig(ModConfig.Type.COMMON, SPEC, "harimt.toml");
-        LOGGER.info("Async Initialized successfully");
+        LOGGER.info("Initializing TickWeave Config...");
+        context.registerConfig(ModConfig.Type.COMMON, SPEC, "tickweave.toml");
+        LOGGER.info("TickWeave initialized successfully");
     }
 
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
-        LOGGER.info("Async Setting up thread-pool...");
+        LOGGER.info("TickWeave setting up thread-pool...");
         this.initialize();
         loadConfig();
         StatsCommand.runStatsThread();

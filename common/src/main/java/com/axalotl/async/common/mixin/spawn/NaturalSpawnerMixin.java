@@ -22,6 +22,7 @@
 package com.axalotl.async.common.mixin.spawn;
 
 import com.axalotl.async.common.config.AsyncConfig;
+import com.axalotl.async.common.ParallelProcessor;
 import com.axalotl.async.common.mixin.accessor.NaturalSpawnerAccessor;
 import com.axalotl.async.common.mixin.accessor.SpawnStateAccessor;
 import com.axalotl.async.common.parallelised.utils.EntitySpawnData;
@@ -103,7 +104,7 @@ public abstract class NaturalSpawnerMixin {
                     new PotentialCalculator(), localMobCapCalculator);
         }
         ConcurrentLinkedQueue<EntitySpawnData> results = new ConcurrentLinkedQueue<>();
-        entityList.parallelStream().forEach(entity -> {
+        ParallelProcessor.forEachParallel(entityList, entity -> {
             Mob mob;
             if (entity instanceof Mob
                     && ((mob = (Mob) entity).isPersistenceRequired() || mob.requiresCustomPersistence())) {

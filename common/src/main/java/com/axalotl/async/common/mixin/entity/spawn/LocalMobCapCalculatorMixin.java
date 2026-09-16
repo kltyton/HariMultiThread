@@ -25,16 +25,27 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LocalMobCapCalculator;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mutable;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value={LocalMobCapCalculator.class})
 public class LocalMobCapCalculatorMixin {
-    @Shadow
-    private final Map<ServerPlayer, LocalMobCapCalculator.MobCounts> playerMobCounts = ConcurrentCollections.newHashMap();
-    @Shadow
-    private final Long2ObjectMap<List<ServerPlayer>> playersNearChunk = new Long2ObjectConcurrentHashMap<List<ServerPlayer>>();
+    @Shadow @Final @Mutable
+    private Map<ServerPlayer, LocalMobCapCalculator.MobCounts> playerMobCounts;
+    @Shadow @Final @Mutable
+    private Long2ObjectMap<List<ServerPlayer>> playersNearChunk;
+
+    @Inject(method="<init>", at=@At("RETURN"))
+    private void async$init(CallbackInfo ci) {
+        playerMobCounts = new java.util.concurrent.ConcurrentHashMap<>(playerMobCounts);
+        Long2ObjectMap<List<ServerPlayer>> concurrent = new Long2ObjectConcurrentHashMap<>();
+        concurrent.putAll(playersNearChunk);
+        playersNearChunk = concurrent;
+    }
 
     @Inject(method={"getPlayersNear"}, at={@At(value="RETURN")}, cancellable=true)
     private void getPlayersNear(ChunkPos pPos, CallbackInfoReturnable<List<ServerPlayer>> cir) {

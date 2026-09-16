@@ -36,7 +36,12 @@ AutoCloseable {
 
     @Redirect(method={"reloadResources"}, at=@At(value="INVOKE", target="Lnet/minecraft/server/MinecraftServer;isSameThread()Z"))
     private boolean onServerExecutionThreadPatch(MinecraftServer minecraftServer) {
-        return ParallelProcessor.isServerExecutionThread();
+        return minecraftServer.isSameThread() || ParallelProcessor.isServerExecutionThread();
+    }
+
+    @Inject(method="tickServer", at=@At("RETURN"))
+    private void async$finishStatistics(CallbackInfo ci) {
+        com.axalotl.async.common.utils.TickStats.onServerTick();
     }
 
     @Inject(method={"stopServer"}, at={@At(value="HEAD")})

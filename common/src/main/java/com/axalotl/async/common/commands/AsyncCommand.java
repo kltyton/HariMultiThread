@@ -26,10 +26,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.EntityType;
 
 public class AsyncCommand {
-    public static final Component prefix = Component.literal((String)"\u00a78[\u00a7f\ud83c\udf00\u00a78]\u00a77 ");
+    public static final Component prefix = Component.literal("\u00a78[\u00a7fTickWeave\u00a78]\u00a77 ");
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        LiteralArgumentBuilder<CommandSourceStack> main = Commands.literal((String)"async");
+        LiteralArgumentBuilder<CommandSourceStack> main = Commands.literal("tickweave");
         main = ConfigCommand.registerConfig(main);
         main = StatsCommand.registerStatus(main);
         main = GpuCommand.registerGpu(main);
@@ -40,4 +40,3 @@ public class AsyncCommand {
         return source.registryAccess().registryOrThrow(Registries.ENTITY_TYPE);
     }
 }
-

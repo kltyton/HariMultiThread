@@ -20,7 +20,7 @@ import java.util.Optional;
 public abstract class EntityPortalMixin {
 
     @Unique
-    private static final Object async$lock = new Object();
+    private static final Object async$portalLock = new Object();
 
     @WrapMethod(method = "getExitPortal")
     private Optional<BlockUtil.FoundRectangle> async_getExitPortal(
@@ -33,15 +33,15 @@ public abstract class EntityPortalMixin {
             return original.call(level, pos, isNether, worldBorder);
         }
         ResourceKey<Level> dimension = level.dimension();
-        synchronized (async$lock) {
-            BlockUtil.FoundRectangle cached = PortalCreationCache.get(dimension);
+        synchronized (async$portalLock) {
+            BlockUtil.FoundRectangle cached = PortalCreationCache.get(dimension, pos, isNether);
             if (cached != null) {
                 return Optional.of(cached);
             }
 
             Optional<BlockUtil.FoundRectangle> optional = original.call(level, pos, isNether, worldBorder);
             if (optional.isPresent()) {
-                PortalCreationCache.put(dimension, optional.get());
+                PortalCreationCache.put(dimension, pos, isNether, optional.get());
             }
             return optional;
         }

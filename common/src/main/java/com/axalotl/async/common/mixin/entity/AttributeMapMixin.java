@@ -21,12 +21,25 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeMap;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mutable;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value={AttributeMap.class})
 public class AttributeMapMixin {
-    @Shadow
-    private final Set<AttributeInstance> dirtyAttributes = ConcurrentHashMap.newKeySet();
-    @Shadow
-    private final Map<Holder<Attribute>, AttributeInstance> attributes = ConcurrentCollections.newHashMap();
+    @Shadow @Final @Mutable
+    private Set<AttributeInstance> dirtyAttributes;
+    @Shadow @Final @Mutable
+    private Map<Attribute, AttributeInstance> attributes;
+
+    @Inject(method="<init>", at=@At("RETURN"))
+    private void async$init(CallbackInfo ci) {
+        Set<AttributeInstance> concurrent = ConcurrentHashMap.newKeySet();
+        concurrent.addAll(dirtyAttributes);
+        dirtyAttributes = concurrent;
+        attributes = new ConcurrentHashMap<>(attributes);
+    }
 }
 

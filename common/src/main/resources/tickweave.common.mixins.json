@@ -3,8 +3,12 @@
   "minVersion": "0.8",
   "package": "com.axalotl.async.common.mixin",
   "compatibilityLevel": "JAVA_17",
-  "refmap": "harimt.refmap.json",
+  "refmap": "tickweave.refmap.json",
   "mixins": [
+    "compat.BlueprintEntityMixin",
+    "compat.SophisticatedCoreAccessorMixin",
+    "compat.SophisticatedCoreInventoryHandlerMixin",
+    "compat.SophisticatedCoreSlotTrackerMixin",
     "accessor.EntityAccessor",
     "accessor.LevelChunkAccessor",
     "accessor.NaturalSpawnerAccessor",
@@ -67,7 +71,6 @@
     "server.ServerLevelEntityCallbacksMixin",
     "server.ServerPlayerMixin",
     "spawn.NaturalSpawnerMixin",
-    "spawn.ServerLevelAccessorMixin",
     "spawn.SpawnStateMixin",
     "utils.FastUtilsMixin",
     "utils.LockHelperMixin",
@@ -86,7 +89,10 @@
     "world.RandomSequencesMixin",
     "world.ScoreboardMixin",
     "world.SectionStorageMixin",
-    "world.ServerLevelMixin"
+    "world.ServerLevelMixin",
+    "utils.LegacyRandomSourceMixin",
+    "entity.spawn.MobCountsMixin",
+    "compat.SophisticatedCoreSlotValueMapMixin"
   ],
   "client": [],
   "server": [

@@ -15,7 +15,7 @@ loom {
     }
 
     mixin {
-        defaultRefmapName = "async.refmap.json"
+        defaultRefmapName = "tickweave.refmap.json"
         useLegacyMixinAp = true
     }
 
@@ -56,6 +56,8 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
 
     // 3. Mixin Stack & Dependencies
+    implementation(annotationProcessor("io.github.llamalad7:mixinextras-common:${mixinextras_version}"))
+    include(modImplementation("io.github.llamalad7:mixinextras-fabric:${mixinextras_version}"))
     // MixinSquared
     // include(implementation(annotationProcessor("com.github.bawnorton.mixinsquared:mixinsquared-fabric:0.1.1")))
 
@@ -76,6 +78,7 @@ dependencies {
     compileOnly files("../common/libs/Harium-1.0.0.jar")
 
     // 6. GPU: Bundle LWJGL Vulkan into the mod JAR
+    include(implementation("org.lwjgl:lwjgl:3.3.1"))
     include(implementation("org.lwjgl:lwjgl-vulkan:3.3.1"))
 }
 

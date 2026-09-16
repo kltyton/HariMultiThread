@@ -56,21 +56,10 @@ public class StatsCommand {
     }
 
     private static void startRecordingAndShow(CommandSourceStack source, int topCount, int ticks) {
-        TickStats.startRecording(ticks);
+        TickStats.startRecording(ticks, () -> showEntityStats(source, topCount, true, ticks));
         source.sendSuccess(() -> AsyncCommand.prefix.copy()
                 .append(Component.literal("Recording entity ticks for " + ticks + " ticks...")
                         .withStyle(ChatFormatting.YELLOW)), false);
-        pollUntilDone(source, topCount, ticks);
-    }
-
-    private static void pollUntilDone(CommandSourceStack source, int topCount, int ticks) {
-        source.getServer().execute(() -> {
-            if (TickStats.isRecording()) {
-                pollUntilDone(source, topCount, ticks);
-            } else {
-                showEntityStats(source, topCount, true, ticks);
-            }
-        });
     }
 
     private static void showGeneralStats(CommandSourceStack source) {
@@ -128,8 +117,10 @@ public class StatsCommand {
                 .append(Component.literal(" async)").withStyle(ChatFormatting.GRAY))
                 .append(Component.literal("\nPool Threads: ").withStyle(ChatFormatting.WHITE))
                 .append(Component.literal(String.valueOf(threads)).withStyle(ChatFormatting.YELLOW))
-                .append(Component.literal(" | Active Workers: ").withStyle(ChatFormatting.WHITE))
-                .append(Component.literal(String.valueOf(workers)).withStyle(ChatFormatting.YELLOW));
+                .append(Component.literal(" | Last Batch Workers: ").withStyle(ChatFormatting.WHITE))
+                .append(Component.literal(String.valueOf(workers)).withStyle(ChatFormatting.YELLOW))
+                .append(Component.literal("\nCompleted Worker Entity Ticks: " + ParallelProcessor.getTotalAsyncTicks())
+                        .withStyle(ChatFormatting.AQUA));
 
         if (circuitBreakerEnabled) {
             message.append(Component.literal("\nCircuit Breaker: ").withStyle(ChatFormatting.WHITE))
@@ -226,7 +217,7 @@ public class StatsCommand {
                             if (showTickStats && ticks > 0) {
                                 double mspt = TickStats.getMSPTForType(type, ticks);
                                 message.append(Component.literal(" "))
-                                        .append(Component.literal(String.format("%.3fms avg", mspt))
+                                        .append(Component.literal(String.format("%.3fms summed entity time/tick", mspt))
                                                 .withStyle(ChatFormatting.GREEN));
                             }
 
@@ -234,7 +225,7 @@ public class StatsCommand {
                         });
             }
 
-            TickStats.resetEntityTickStats();
+            if (showTickStats) TickStats.resetEntityTickStats();
             source.sendSuccess(() -> message, false);
         });
     }

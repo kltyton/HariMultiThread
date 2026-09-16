@@ -50,8 +50,8 @@ public class AsyncConfigForge {
 
                 enableAffinityRoutingLocal = BUILDER.comment("""
                                 Enable affinity-based entity routing.
-                                Routes entities in the same chunk to the same worker thread for better CPU cache locality.
-                                Workers steal from other lanes when idle. Recommended: true.""")
+                                Sorts nearby entities into spatial batches for better CPU cache locality.
+                                Workers and the server share the pending batches. Recommended: true.""")
                                 .define("enableAffinityRouting", enableAffinityRouting.getValue());
 
                 enableCircuitBreakerLocal = BUILDER.comment("""
@@ -61,8 +61,8 @@ public class AsyncConfigForge {
                                 .define("enableCircuitBreaker", enableCircuitBreaker.getValue());
 
                 entitiesPerWorkerLocal = BUILDER.comment("""
-                                Target number of entities per worker thread. Lower values = more parallelism.
-                                The system dynamically scales workers based on entity count.
+                                Maximum entities per task. Lower values create smaller tasks.
+                                Task size also adapts to measured entity cost and available threads.
                                 Recommended: 15-40. Default: 25.""")
                                 .defineInRange("entitiesPerWorker", entitiesPerWorker.getValue(), 5, 200);
 
@@ -96,6 +96,7 @@ public class AsyncConfigForge {
                 synchronizedEntities.setValue(entities.isEmpty()
                                 ? getDefaultSynchronizedEntities()
                                 : entities);
+                onConfigLoaded();
         }
 
         public static void saveConfig() {

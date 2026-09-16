@@ -3,6 +3,7 @@ plugins {
     id 'net.minecraftforge.gradle'
     id 'java-library'
     id 'idea'
+    id 'org.spongepowered.mixin' version '0.7.+'
 }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(java_version)
@@ -23,7 +24,9 @@ minecraft {
             property 'eventbus.api.strictRuntimeChecks', 'true'
             property 'forge.enabledGameTestNamespaces', mod_id
 
-            args "--mixin.config=${mod_id}.common.mixins.json,${mod_id}.forge.mixins.json"
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${buildDir}/createSrgToMcp/output.srg"
+            mods { tickweave { source sourceSets.main } }
         }
 
         server {
@@ -33,7 +36,9 @@ minecraft {
             property 'forge.enabledGameTestNamespaces', mod_id
             args '--nogui'
 
-            args "--mixin.config=${mod_id}.common.mixins.json,${mod_id}.forge.mixins.json"
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${buildDir}/createSrgToMcp/output.srg"
+            mods { tickweave { source sourceSets.main } }
         }
 
         data {
@@ -52,6 +57,7 @@ repositories {
 dependencies {
     // 1. Core
     minecraft "net.minecraftforge:forge:$minecraft_version-$forge_version"
+    annotationProcessor "org.spongepowered:mixin:${mixin_version}:processor"
 
     // 2. Mixin Extras & Squared
     implementation(annotationProcessor("io.github.llamalad7:mixinextras-common:${mixinextras_version}"))
@@ -70,11 +76,28 @@ dependencies {
     // 4. Optional: Harium for navigation integration
     compileOnly files("../common/libs/Harium-1.0.0.jar")
 
-    // 5. GPU: Bundle LWJGL Vulkan into the mod JAR via JarJar
-    // Forge ships LWJGL 3.3.1 core but NOT the Vulkan module.
-    implementation(jarJar("org.lwjgl:lwjgl-vulkan:[3.3.1,3.4.0)"))
-    implementation "org.lwjgl:lwjgl-vulkan:3.3.1"
+    // Dedicated servers do not provide the LWJGL core required by Vulkan's module descriptor.
+    implementation(jarJar("org.lwjgl:lwjgl:3.3.1")) {
+        jarJar.ranged(it, "[3.3.1,3.4.0)")
+    }
+    implementation(jarJar("org.lwjgl:lwjgl-vulkan:3.3.1")) {
+        jarJar.ranged(it, "[3.3.1,3.4.0)")
+    }
 }
+
+mixin {
+    add sourceSets.main, 'tickweave.refmap.json'
+    config 'tickweave.common.mixins.json'
+    config 'tickweave.forge.mixins.json'
+}
+
+jarJar.enable()
+tasks.named('jarJar').configure {
+    from(rootProject.file('LICENSE'))
+    manifest.attributes('MixinConfigs': 'tickweave.common.mixins.json,tickweave.forge.mixins.json')
+}
+reobf { jarJar {} }
+tasks.named('jarJar').configure { finalizedBy 'reobfJarJar' }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
@@ -83,6 +106,7 @@ jar.finalizedBy('reobfJar')
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+    options.incremental = false
 }
 
 idea.module { downloadJavadoc = downloadSources = true }
